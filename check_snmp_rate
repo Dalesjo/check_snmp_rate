@@ -4,21 +4,23 @@
 host=127.0.0.1
 timeout=8
 interface=0
-variable="bandwith"
+variable="bandwidth"
 measure="ifOutOctets"
 warning=50000000
 critical=100000000
 authProtocol="SHA"
 privProtocol="AES"
 secLevel="authPriv"
+kilobit=0
 
-while getopts 'h:t:i:v:m:w:c:u:A:a:X:x:l:' flag; do
+while getopts 'h:t:i:v:m:k:w:c:u:A:a:X:x:l:' flag; do
   case "${flag}" in
     h) host="${OPTARG}" ;;
     t) timeout="${OPTARG}" ;;
     i) interface="${OPTARG}" ;;
     v) variable="${OPTARG}" ;;
-    v) measure="${OPTARG}" ;;
+    m) measure="${OPTARG}" ;;
+    k) kilobit=1 ;;
 
     w) warning="${OPTARG}" ;;
     c) critical="${OPTARG}" ;;
@@ -34,15 +36,15 @@ while getopts 'h:t:i:v:m:w:c:u:A:a:X:x:l:' flag; do
 done
 
 if [ "$help" == "true" ] || [ -z $username ] || [ -z $authPassword ] || [ -z $privPassword ]; then
-	echo "check_failedlogins [OPTIONS...]"
+	echo "check_snmp_rate [OPTIONS...]"
 	echo "";
-	echo "nagios test, count bandwith on network interface"
+	echo "nagios test, count bandwidth on network interface"
 	echo "";
 	echo "Flags:";
 	echo "  -h    Snmp host";
   echo "  -t    Seconds you want to count, use higher number for better precision, default:8";
   echo "  -i    Interface number, default:0";
-  echo "  -v    Variable, default:bandwith";
+  echo "  -v    Variable, default:bandwidth";
   echo "  -m    Value to measure, default:ifOutOctets";
 
   echo "  -w    Max bits/s before warning is returned";
@@ -57,10 +59,9 @@ if [ "$help" == "true" ] || [ -z $username ] || [ -z $authPassword ] || [ -z $pr
 
 	echo "";
 	echo "Example:";
-	echo "check_snmpBandwithIn -u user -A password -X secret";
+	echo "check_snmp_rate -u user -A password -X secret";
 	exit 0;
 fi;
-
 
 
 # IF-MIB::ifOutOctets.3
@@ -72,7 +73,12 @@ first="$($cmd)"
 sleep $timeout
 last="$($cmd)"
 
-rate=$(( 8*(($last-$first)/$timeout)  ))
+rate=$(( ($last-$first)/$timeout  ))
+
+if [ $kilobit -gt 0 ]; then
+  rate=$(( $rate*8  ))
+fi;
+
 
 if [ $rate -gt $critical ]; then
 	echo "Critical - Interface ${name} rate is ${rate}/${critical} | $variable=${rate};${warning};${critical}";
