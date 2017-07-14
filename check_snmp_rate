@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# Defaults
+host=127.0.0.1
+timeout=8
+interface=0
+variable="bandwith"
+measure="ifOutOctets"
+warning=50000000
+critical=100000000
+authProtocol="SHA"
+privProtocol="AES"
+secLevel="authPriv"
+
+while getopts 'h:t:i:v:m:w:c:u:A:a:X:x:l:' flag; do
+  case "${flag}" in
+    h) host="${OPTARG}" ;;
+    t) timeout="${OPTARG}" ;;
+    i) interface="${OPTARG}" ;;
+    v) variable="${OPTARG}" ;;
+    v) measure="${OPTARG}" ;;
+
+    w) warning="${OPTARG}" ;;
+    c) critical="${OPTARG}" ;;
+
+    u) username="${OPTARG}" ;;
+    A) authPassword="${OPTARG}" ;;
+    a) authProtocol="${OPTARG}" ;;
+    X) privPassword="${OPTARG}" ;;
+    x) privProtocol="${OPTARG}" ;;
+    l) secLevel="${OPTARG}" ;;
+
+  esac
+done
+
+if [ "$help" == "true" ] || [ -z $username ] || [ -z $authPassword ] || [ -z $privPassword ]; then
+	echo "check_failedlogins [OPTIONS...]"
+	echo "";
+	echo "nagios test, count bandwith on network interface"
+	echo "";
+	echo "Flags:";
+	echo "  -h    Snmp host";
+  echo "  -t    Seconds you want to count, use higher number for better precision, default:8";
+  echo "  -i    Interface number, default:0";
+  echo "  -v    Variable, default:bandwith";
+  echo "  -m    Value to measure, default:ifOutOctets";
+
+  echo "  -w    Max bits/s before warning is returned";
+  echo "  -c    Max bits/s before critical is returned";
+
+  echo "  -u    Username for snmpv3, default:''";
+  echo "  -A    Authentication password for snmpv3, default:''";
+  echo "  -a    Authentication protocol for snmpv3, default:SHA";
+  echo "  -X    privPassword for snmpv3, default:''";
+  echo "  -x    privProtocol for snmpv3 default:AES";
+  echo "  -l    secLevel for snmpv3 default:authPriv";
+
+	echo "";
+	echo "Example:";
+	echo "check_snmpBandwithIn -u user -A password -X secret";
+	exit 0;
+fi;
+
+
+
+# IF-MIB::ifOutOctets.3
+# IF-MIB::ifInOctets.3
+cmd="snmpwalk -Oqv -u $username -A $authPassword -a $authProtocol -X $privPassword -x $privProtocol -l $secLevel -v3 $host IF-MIB::$measure.$interface"
+name="$(snmpwalk -Oqv -u $username -A $authPassword -a $authProtocol -X $privPassword -x $privProtocol -l $secLevel -v3 $host IF-MIB::ifDescr.$interface)"
+
+first="$($cmd)"
+sleep $timeout
+last="$($cmd)"
+
+rate=$(( 8*(($last-$first)/$timeout)  ))
+
+if [ $rate -gt $critical ]; then
+	echo "Critical - Interface ${name} rate is ${rate}/${critical} | $variable=${rate};${warning};${critical}";
+	exit 2
+fi;
+
+if [ $rate -gt $warning ]; then
+	echo "Warning - Interface ${name} rate is ${rate}/${warning}  | $variable=${rate};${warning};${critical}";
+	exit 1
+fi;
+
+echo "Ok - Interface ${name} rate is ${rate} | $variable=${rate};${warning};${critical}";
+exit 0
