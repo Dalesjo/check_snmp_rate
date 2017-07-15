@@ -13,7 +13,7 @@ privProtocol="AES"
 secLevel="authPriv"
 kilobit=0
 
-while getopts 'h:t:i:v:m:k:w:c:u:A:a:X:x:l:' flag; do
+while getopts 'h:t:i:v:m:kw:c:u:A:a:X:x:l:' flag; do
   case "${flag}" in
     h) host="${OPTARG}" ;;
     t) timeout="${OPTARG}" ;;
